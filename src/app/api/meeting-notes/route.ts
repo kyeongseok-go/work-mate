@@ -2,12 +2,20 @@ export const runtime = 'edge';
 
 import { callClaude } from '@/lib/claude';
 import { Message } from '@/data/messages';
+import { type Severity, toSeverity } from '@/lib/severity';
 
 export interface AgendaItem {
   topic: string;
   discussion: string;
   decision?: string;
   actionItem?: { task: string; assignee: string; deadline?: string };
+}
+
+export interface StructuredActionItem {
+  task: string;
+  assignee: string;
+  due?: string;
+  priority: Severity; // 공유 심각도 모델
 }
 
 export interface MeetingNotes {
@@ -17,6 +25,7 @@ export interface MeetingNotes {
   participants: string[];
   summary: string;
   agendaItems: AgendaItem[];
+  actionItems: StructuredActionItem[]; // 담당자·마감·우선순위로 분리된 통합 액션 리스트
   nextSteps: string[];
   keyDecisions: string[];
 }
@@ -34,6 +43,10 @@ const SYSTEM_PROMPT = `당신은 기업 채팅 메시지를 분석하여 회의�
 - nextSteps는 향후 할 일 목록 (2~5개)
 - keyDecisions는 가장 중요한 결정사항 요약 (1~4개, 간결하게)
 - participants는 대화에 등장한 실제 참여자 이름 목록
+- actionItems는 회의에서 도출된 모든 액션을 담당자·마감일·우선순위로 분리한 통합 리스트
+  - priority는 P0(즉시)·P1(중요)·P2(보통)·P3(참고) 중 하나
+  - assignee는 담당자 이름, due는 마감일(있을 때만), task는 할 일
+  - 액션이 없으면 빈 배열
 
 반환 JSON 형식:
 {
@@ -49,6 +62,9 @@ const SYSTEM_PROMPT = `당신은 기업 채팅 메시지를 분석하여 회의�
       "decision": "결정사항 (선택)",
       "actionItem": { "task": "할 일", "assignee": "담당자", "deadline": "마감일 (선택)" }
     }
+  ],
+  "actionItems": [
+    { "task": "할 일", "assignee": "담당자", "due": "마감일 (선택)", "priority": "P0" | "P1" | "P2" | "P3" }
   ],
   "nextSteps": ["다음 할 일 1", "다음 할 일 2"],
   "keyDecisions": ["핵심 결정 1", "핵심 결정 2"]
@@ -85,6 +101,14 @@ function parseMeetingNotes(raw: string): MeetingNotes {
                       : undefined,
                 }
               : undefined,
+        }))
+      : [],
+    actionItems: Array.isArray(parsed.actionItems)
+      ? parsed.actionItems.map((item: Record<string, unknown>) => ({
+          task: typeof item.task === 'string' ? item.task : '',
+          assignee: typeof item.assignee === 'string' ? item.assignee : '미정',
+          due: typeof item.due === 'string' ? item.due : undefined,
+          priority: toSeverity(item.priority),
         }))
       : [],
     nextSteps: Array.isArray(parsed.nextSteps) ? parsed.nextSteps : [],

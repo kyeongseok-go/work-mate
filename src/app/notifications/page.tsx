@@ -6,7 +6,15 @@ import { notifications as initialNotifications, type Notification, type Notifica
 import { useFeatureStore } from '@/store/featureStore';
 import { useWorkLifeStore } from '@/store/workLifeStore';
 import { cn } from '@/lib/utils';
-import type { ClassifiedNotification } from '@/app/api/classify/route';
+import type { ClassifiedNotification, RecommendedAction } from '@/app/api/classify/route';
+import { type Severity, SEVERITY_META, isAtLeastAsSevere } from '@/lib/severity';
+
+const ACTION_META: Record<RecommendedAction, { label: string; icon: string }> = {
+  reply_now: { label: '즉시 답장', icon: '⚡' },
+  schedule: { label: '일정 잡기', icon: '📅' },
+  delegate: { label: '위임 검토', icon: '👥' },
+  ignore: { label: '조치 불필요', icon: '➖' },
+};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -17,6 +25,9 @@ interface Toast {
 
 interface NotificationWithAI extends Notification {
   aiPriority?: NotificationPriority;
+  aiSeverity?: Severity;
+  aiUrgencyScore?: number;
+  aiRecommendedAction?: RecommendedAction;
   aiReason?: string;
   aiConfidence?: number;
 }
@@ -179,6 +190,22 @@ function AINotificationCard({ notification: n, onPriorityChange }: AINotificatio
               <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-500">
                 AI 분류
               </span>
+              {/* Severity badge (공유 P0~P3 모델) */}
+              {n.aiSeverity && (
+                <span
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-md text-white"
+                  style={{ backgroundColor: SEVERITY_META[n.aiSeverity].color }}
+                  title={SEVERITY_META[n.aiSeverity].desc}
+                >
+                  {n.aiSeverity}
+                </span>
+              )}
+              {/* Urgency score */}
+              {n.aiUrgencyScore !== undefined && (
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-500">
+                  긴급도 {n.aiUrgencyScore}/10
+                </span>
+              )}
               {!n.isRead && (
                 <span className="text-[10px] font-medium" style={{ color: config.textColor }}>
                   NEW
@@ -194,6 +221,15 @@ function AINotificationCard({ notification: n, onPriorityChange }: AINotificatio
             {n.title}
           </p>
           <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{n.body}</p>
+
+          {/* Recommended action (AI 라우팅) */}
+          {n.aiRecommendedAction && (
+            <div className="mt-2">
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+                {ACTION_META[n.aiRecommendedAction].icon} 추천: {ACTION_META[n.aiRecommendedAction].label}
+              </span>
+            </div>
+          )}
 
           {/* Action row */}
           <div className="mt-2.5 flex items-center gap-3 flex-wrap">
@@ -377,6 +413,9 @@ export default function NotificationsPage() {
         return {
           ...n,
           aiPriority: classified?.priority ?? n.priority,
+          aiSeverity: classified?.severity,
+          aiUrgencyScore: classified?.urgencyScore,
+          aiRecommendedAction: classified?.recommendedAction,
           aiReason: classified?.reason,
           aiConfidence: classified?.confidence,
         };
@@ -502,8 +541,10 @@ export default function NotificationsPage() {
             }}
           >
             <span>🌙</span>
-            <span className="text-xs font-semibold text-purple-800">퇴근 시간 외 — 알림 자동 무음 적용 중</span>
-            <span className="text-[10px] text-purple-400 ml-1">긴급 키워드 포함 알림은 정상 표시</span>
+            <span className="text-xs font-semibold text-purple-800">퇴근 시간 외 — 알림 묶음 보관 중</span>
+            <span className="text-[10px] text-purple-400 ml-1">
+              {workLifeStore.passThreshold} 이상만 즉시 통과 · 나머지는 복귀 시 일괄
+            </span>
           </div>
         )}
 
@@ -612,6 +653,33 @@ export default function NotificationsPage() {
           </button>
         </div>
       )}
+
+      {/* Work-Life 묶음 다이제스트 (AI 심각도 기반) */}
+      {hasClassified && !isClassifying && isOutside && workLifeStore.autoMute && (() => {
+        const scored = aiNotifications.filter((n) => n.aiSeverity);
+        const passed = scored.filter((n) =>
+          isAtLeastAsSevere(n.aiSeverity!, workLifeStore.passThreshold)
+        ).length;
+        const batched = scored.length - passed;
+        return (
+          <div
+            className="mb-5 px-4 py-3 rounded-xl"
+            style={{ backgroundColor: 'rgba(88, 28, 235, 0.06)', border: '1px solid rgba(88,28,235,0.15)' }}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <span>🌙</span>
+              <span className="text-xs font-semibold text-purple-800">
+                퇴근 모드 — 심각도 기반 라우팅 적용 중
+              </span>
+            </div>
+            <p className="text-[11px] text-purple-500 leading-relaxed">
+              즉시 통과 <span className="font-bold">{passed}</span>건
+              ({workLifeStore.passThreshold} 이상) · 묶음 보관{' '}
+              <span className="font-bold">{batched}</span>건 (복귀 시 일괄 전달)
+            </p>
+          </div>
+        );
+      })()}
 
       {/* Classified groups */}
       {hasClassified && !isClassifying && (

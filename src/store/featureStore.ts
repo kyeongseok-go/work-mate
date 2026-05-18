@@ -69,6 +69,14 @@ export const FEATURE_CONFIGS: FeatureConfig[] = [
     phase: 2,
     icon: '⚖️',
   },
+  {
+    key: 'dailyDigest',
+    nameKo: 'AI 데일리 브리핑',
+    nameEn: 'Daily Digest',
+    description: '채팅·알림·액션을 종합해 "오늘 알아야 할 것"을 한 장으로 브리핑하는 AI 에이전트.',
+    phase: 2,
+    icon: '🗞️',
+  },
 ];
 
 export interface FeatureToggleState {
@@ -80,23 +88,27 @@ export interface FeatureToggleState {
     semanticSearch: boolean;
     priorityLearning: boolean;
     workLifeMode: boolean;
+    dailyDigest: boolean;
   };
   toggleFeature: (key: keyof FeatureToggleState['features']) => void;
   getActiveCount: () => number;
 }
 
+const DEFAULT_FEATURES: FeatureToggleState['features'] = {
+  smartCatchup: false,
+  notificationAI: false,
+  meetingNotes: false,
+  smartReply: false,
+  semanticSearch: false,
+  priorityLearning: false,
+  workLifeMode: false,
+  dailyDigest: false,
+};
+
 export const useFeatureStore = create<FeatureToggleState>()(
   persist(
     (set, get) => ({
-      features: {
-        smartCatchup: false,
-        notificationAI: false,
-        meetingNotes: false,
-        smartReply: false,
-        semanticSearch: false,
-        priorityLearning: false,
-        workLifeMode: false,
-      },
+      features: { ...DEFAULT_FEATURES },
       toggleFeature: (key) =>
         set((state) => ({
           features: {
@@ -111,6 +123,16 @@ export const useFeatureStore = create<FeatureToggleState>()(
     }),
     {
       name: 'workmate-ai-features',
+      version: 1,
+      // 기존 localStorage 에 신규 토글 키가 없을 때 기본값 보강 (하위호환)
+      migrate: (persisted: unknown): FeatureToggleState => {
+        const p = (persisted ?? {}) as Record<string, unknown>;
+        const pf = (p.features ?? {}) as Record<string, unknown>;
+        return {
+          ...p,
+          features: { ...DEFAULT_FEATURES, ...pf },
+        } as unknown as FeatureToggleState;
+      },
     }
   )
 );

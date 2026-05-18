@@ -17,6 +17,7 @@ import {
 import { MeetingNotes } from '@/app/api/meeting-notes/route';
 import { useMeetingStore } from '@/store/meetingStore';
 import { cn } from '@/lib/utils';
+import { SEVERITY_META } from '@/lib/severity';
 
 interface MeetingNotesModalProps {
   roomId: string;
@@ -163,6 +164,44 @@ export function MeetingNotesModal({ roomId, notes, onClose }: MeetingNotesModalP
                     <p className="text-sm text-gray-800 leading-snug">{decision}</p>
                   </div>
                 ))}
+              </div>
+            </section>
+          )}
+
+          {/* Structured Action Items (담당자·마감·우선순위) */}
+          {(editedNotes.actionItems ?? []).length > 0 && (
+            <section>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">
+                액션 아이템
+              </h3>
+              <div className="rounded-xl border border-gray-100 overflow-hidden">
+                {(editedNotes.actionItems ?? []).map((ai, i) => {
+                  const meta = SEVERITY_META[ai.priority];
+                  return (
+                    <div
+                      key={i}
+                      className={cn(
+                        'flex items-start gap-3 px-4 py-3',
+                        i > 0 && 'border-t border-gray-50'
+                      )}
+                    >
+                      <span
+                        className="text-[10px] font-bold px-1.5 py-0.5 rounded-md text-white flex-shrink-0 mt-0.5"
+                        style={{ backgroundColor: meta.color }}
+                        title={meta.desc}
+                      >
+                        {ai.priority}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-800 leading-snug">{ai.task}</p>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                          <span className="font-medium text-gray-600">👤 {ai.assignee}</span>
+                          {ai.due && <span className="text-gray-400">📅 {ai.due}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}
@@ -441,6 +480,17 @@ function formatNotesAsText(notes: MeetingNotes): string {
       }
       lines.push('');
     });
+  }
+
+  const actionItems = notes.actionItems ?? [];
+  if (actionItems.length > 0) {
+    lines.push('## 액션 아이템');
+    actionItems.forEach((ai) =>
+      lines.push(
+        `- [${ai.priority}] ${ai.task} → ${ai.assignee}${ai.due ? ` (${ai.due})` : ''}`
+      )
+    );
+    lines.push('');
   }
 
   if (notes.nextSteps.length > 0) {

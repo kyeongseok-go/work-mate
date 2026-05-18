@@ -2,6 +2,14 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { type Severity, isAtLeastAsSevere } from '@/lib/severity';
+
+export interface BatchedNotification {
+  id: string;
+  title: string;
+  severity: Severity;
+  ts: string;
+}
 
 export interface WorkLifeState {
   workHours: { start: string; end: string };
@@ -16,6 +24,10 @@ export interface WorkLifeState {
   showSenderWarning: boolean;
   simulatedTime: string | null;
 
+  // 알림 묶음 + 심각도 기반 통과
+  batchedQueue: BatchedNotification[];
+  passThreshold: Severity; // 이 심각도 이상은 근무외에도 즉시 통과 (기본 P1)
+
   // Actions
   setWorkHours: (start: string, end: string) => void;
   setWeekendOff: (val: boolean) => void;
@@ -28,6 +40,12 @@ export interface WorkLifeState {
   removeSender: (sender: string) => void;
   setShowSenderWarning: (val: boolean) => void;
   setSimulatedTime: (time: string | null) => void;
+  setPassThreshold: (s: Severity) => void;
+
+  // 묶음/통과 액션
+  routeNotification: (n: BatchedNotification) => 'passed' | 'batched';
+  flushBatch: () => BatchedNotification[];
+  clearBatch: () => void;
 
   // Computed helpers
   isOutsideWorkHours: () => boolean;
@@ -53,6 +71,8 @@ export const useWorkLifeStore = create<WorkLifeState>()(
       },
       showSenderWarning: true,
       simulatedTime: null,
+      batchedQueue: [],
+      passThreshold: 'P1',
 
       setWorkHours: (start, end) =>
         set((s) => ({ workHours: { ...s.workHours, start, end } })),
@@ -94,6 +114,23 @@ export const useWorkLifeStore = create<WorkLifeState>()(
         })),
       setShowSenderWarning: (val) => set({ showSenderWarning: val }),
       setSimulatedTime: (time) => set({ simulatedTime: time }),
+      setPassThreshold: (s) => set({ passThreshold: s }),
+
+      routeNotification: (n) => {
+        const st = get();
+        // 근무 중이거나 자동 무음 OFF → 정상 전달
+        if (!st.isOutsideWorkHours() || !st.autoMute) return 'passed';
+        // 근무 외 + 자동 무음: 임계 이상 심각도만 즉시 통과, 나머지는 묶음
+        if (isAtLeastAsSevere(n.severity, st.passThreshold)) return 'passed';
+        set((s) => ({ batchedQueue: [...s.batchedQueue, n] }));
+        return 'batched';
+      },
+      flushBatch: () => {
+        const q = get().batchedQueue;
+        set({ batchedQueue: [] });
+        return q;
+      },
+      clearBatch: () => set({ batchedQueue: [] }),
 
       isOutsideWorkHours: () => {
         const { workHours, weekendOff, simulatedTime } = get();
@@ -129,6 +166,22 @@ export const useWorkLifeStore = create<WorkLifeState>()(
     }),
     {
       name: 'workmate-work-life',
+      version: 1,
+      // 기존 localStorage 상태에 신규 필드 안전 주입 (하위호환)
+      migrate: (persisted: unknown): WorkLifeState => {
+        const p = (persisted ?? {}) as Record<string, unknown>;
+        return {
+          ...p,
+          batchedQueue: Array.isArray(p.batchedQueue) ? p.batchedQueue : [],
+          passThreshold:
+            p.passThreshold === 'P0' ||
+            p.passThreshold === 'P1' ||
+            p.passThreshold === 'P2' ||
+            p.passThreshold === 'P3'
+              ? p.passThreshold
+              : 'P1',
+        } as unknown as WorkLifeState;
+      },
     }
   )
 );

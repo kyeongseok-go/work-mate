@@ -16,6 +16,7 @@ import { chatRooms, getTotalUnread } from '@/data/messages';
 import { notifications, getUnreadCount } from '@/data/notifications';
 import { PriorityDashboard } from '@/components/chat/PriorityDashboard';
 import { usePriorityStore, getPriorityTier, PRIORITY_INDICATORS } from '@/store/priorityStore';
+import { DailyDigestCard } from '@/components/digest/DailyDigestCard';
 
 function formatRelativeTime(ts: string): string {
   const now = new Date('2024-04-24T18:00:00');
@@ -73,6 +74,9 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* AI 데일리 브리핑 (토글 ON 시) */}
+      {features.dailyDigest && <DailyDigestCard />}
+
       {/* Urgent Notifications Banner */}
       {urgentNotifs.length > 0 && (
         <div
@@ -123,7 +127,7 @@ export default function HomePage() {
           href="/settings"
           icon={<Zap size={20} />}
           label="AI 기능 활성화"
-          value={`${activeCount}/7`}
+          value={`${activeCount}/${FEATURE_CONFIGS.length}`}
         />
         <StatCard
           href="/chat/project-a"

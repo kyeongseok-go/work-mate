@@ -6,7 +6,7 @@ import { Search, ChevronDown, ChevronUp, ArrowRight, Sparkles } from 'lucide-rea
 import { useFeatureStore } from '@/store/featureStore';
 import { chatRooms } from '@/data/messages';
 import { people } from '@/data/people';
-import type { SearchResult } from '@/app/api/search/route';
+import type { SearchResult, SearchSynthesis } from '@/app/api/search/route';
 
 // Build a flat list of all messages with room/sender context for search
 interface MessageWithContext {
@@ -156,10 +156,30 @@ function AIResultCard({ result }: AIResultCardProps) {
         </div>
 
         {/* Message content */}
-        <p className="text-sm text-gray-800 leading-relaxed mb-4">{result.content}</p>
+        <p className="text-sm text-gray-800 leading-relaxed mb-3">{result.content}</p>
 
-        {/* Relevance bar */}
-        <RelevanceBar score={result.relevance} />
+        {/* Matched semantic terms */}
+        {result.matchedTerms.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {result.matchedTerms.map((t) => (
+              <span
+                key={t}
+                className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Rerank score bar (검색 품질 신호) */}
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-gray-400 shrink-0">재랭킹</span>
+          <RelevanceBar score={result.rerankScore} />
+          <span className="text-[10px] text-gray-400 shrink-0 tabular-nums">
+            관련도 {result.relevance}
+          </span>
+        </div>
 
         {/* AI reasoning toggle */}
         <button
@@ -189,6 +209,51 @@ function AIResultCard({ result }: AIResultCardProps) {
           <ArrowRight size={12} />
         </button>
       </div>
+    </div>
+  );
+}
+
+interface SynthesisCardProps {
+  synthesis: SearchSynthesis;
+  results: SearchResult[];
+}
+
+function SynthesisCard({ synthesis, results }: SynthesisCardProps) {
+  const router = useRouter();
+  const byId = new Map(results.map((r) => [r.messageId, r]));
+
+  return (
+    <div
+      className="rounded-2xl p-5 mb-5 border shadow-sm"
+      style={{ background: 'linear-gradient(135deg, #eef4ff 0%, #ffffff 70%)', borderColor: '#bfdbfe' }}
+    >
+      <div className="flex items-center gap-1.5 mb-2">
+        <Sparkles size={14} style={{ color: '#2563eb' }} />
+        <span className="text-xs font-bold tracking-wide" style={{ color: '#2563eb' }}>
+          AI 답변
+        </span>
+      </div>
+      <p className="text-sm text-gray-800 leading-relaxed">{synthesis.text}</p>
+
+      {synthesis.citations.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-gray-400">출처 {synthesis.citations.length}건:</span>
+          {synthesis.citations.map((id, i) => {
+            const r = byId.get(id);
+            if (!r) return null;
+            return (
+              <button
+                key={id}
+                onClick={() => router.push(`/chat/${r.roomId}`)}
+                className="text-[11px] px-2 py-0.5 rounded-full bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors"
+                title={r.content}
+              >
+                [{i + 1}] {r.roomName} · {r.sender}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -248,6 +313,8 @@ export default function SearchPage() {
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [aiResults, setAiResults] = useState<SearchResult[] | null>(null);
+  const [synthesis, setSynthesis] = useState<SearchSynthesis | null>(null);
+  const [interpretation, setInterpretation] = useState<string | null>(null);
   const [keywordResults, setKeywordResults] = useState<MessageWithContext[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastQuery, setLastQuery] = useState('');
@@ -265,6 +332,8 @@ export default function SearchPage() {
         const results = keywordSearch(q);
         setKeywordResults(results);
         setAiResults(null);
+        setSynthesis(null);
+        setInterpretation(null);
         return;
       }
 
@@ -272,6 +341,8 @@ export default function SearchPage() {
       setIsLoading(true);
       setAiResults(null);
       setKeywordResults(null);
+      setSynthesis(null);
+      setInterpretation(null);
 
       try {
         const allMessages = buildAllMessages();
@@ -287,7 +358,9 @@ export default function SearchPage() {
           throw new Error(json.error ?? '검색 중 오류가 발생했습니다.');
         }
 
-        setAiResults(json.data as SearchResult[]);
+        setAiResults((json.data ?? []) as SearchResult[]);
+        setSynthesis((json.synthesizedAnswer as SearchSynthesis | undefined) ?? null);
+        setInterpretation((json.queryInterpretation as string | undefined) ?? null);
       } catch (err) {
         setError(err instanceof Error ? err.message : '검색 중 오류가 발생했습니다.');
       } finally {
@@ -401,10 +474,22 @@ export default function SearchPage() {
       {/* AI results */}
       {!isLoading && isAI && aiResults !== null && (
         <div className="mt-6">
-          <p className="text-xs text-gray-500 mb-4">
-            <span className="font-semibold text-gray-700">&ldquo;{lastQuery}&rdquo;</span> 검색 결과{' '}
-            {aiResults.length}개
-          </p>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <p className="text-xs text-gray-500">
+              <span className="font-semibold text-gray-700">&ldquo;{lastQuery}&rdquo;</span> 검색 결과{' '}
+              {aiResults.length}개
+            </p>
+            {interpretation && (
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200">
+                해석: {interpretation}
+              </span>
+            )}
+          </div>
+
+          {synthesis && synthesis.text && (
+            <SynthesisCard synthesis={synthesis} results={aiResults} />
+          )}
+
           {aiResults.length === 0 ? (
             <EmptyResults query={lastQuery} />
           ) : (

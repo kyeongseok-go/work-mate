@@ -37,7 +37,7 @@ export default function SettingsPage() {
           </div>
           <div className="text-3xl font-bold mb-1">
             {activeCount}
-            <span className="text-lg font-normal text-red-200"> / 7</span>
+            <span className="text-lg font-normal text-red-200"> / {FEATURE_CONFIGS.length}</span>
           </div>
           <p className="text-red-100 text-sm">
             {activeCount === 0
@@ -179,7 +179,7 @@ export default function SettingsPage() {
       <div className="mt-8 p-4 bg-gray-50 rounded-xl border border-gray-100">
         <p className="text-xs text-gray-500 leading-relaxed">
           <span className="font-medium text-gray-700">{BRAND.appName}</span>은 그룹웨어 메신저에
-          AI 기능을 통합하는 컨셉 데모입니다. 7개 기능 모두 Claude API로 동작합니다.
+          AI 기능을 통합하는 컨셉 데모입니다. {FEATURE_CONFIGS.length}개 기능을 토글 ON/OFF로 비교 체험할 수 있습니다.
           설정은 브라우저에 저장됩니다.
         </p>
       </div>
