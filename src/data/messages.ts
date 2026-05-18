@@ -1,0 +1,1118 @@
+export interface Attachment {
+  type: 'image' | 'file' | 'link';
+  name: string;
+  url?: string;
+}
+
+export interface Message {
+  id: string;
+  senderId: string;
+  content: string;
+  timestamp: string;
+  attachments?: Attachment[];
+  reactions?: { emoji: string; count: number }[];
+  isRead?: boolean;
+  mentionIds?: string[];
+}
+
+export interface ChatRoom {
+  id: string;
+  name: string;
+  description: string;
+  memberIds: string[];
+  messages: Message[];
+  unreadCount: number;
+  lastActivity: string;
+  category: 'project' | 'team' | 'casual' | 'executive';
+  isPinned?: boolean;
+}
+
+// 프로젝트A - 고객사 시스템 마이그레이션 (87 messages)
+const projectAMessages: Message[] = [
+  {
+    id: 'pa-1',
+    senderId: 'choi-lead',
+    content: '팀원들 주목! 오늘부터 고객사 마이그레이션 프로젝트 본격 시작입니다. 일정 공유해드릴게요.',
+    timestamp: '2024-04-15T09:00:00',
+  },
+  {
+    id: 'pa-2',
+    senderId: 'choi-lead',
+    content: '전체 마이그레이션 기간: 4/15 ~ 5/31. 1단계 DB 스키마 분석, 2단계 데이터 이전, 3단계 검증 및 배포 순서로 갑니다.',
+    timestamp: '2024-04-15T09:02:00',
+    attachments: [{ type: 'file', name: '마이그레이션_전체일정_v1.xlsx' }],
+  },
+  {
+    id: 'pa-3',
+    senderId: 'park-pm',
+    content: '일정 확인했습니다. 1단계 리드는 @고연구원 부탁드립니다. 이번 주 금요일까지 현황 분석 보고서 작성 가능할까요?',
+    timestamp: '2024-04-15T09:15:00',
+    mentionIds: ['me'],
+  },
+  {
+    id: 'pa-4',
+    senderId: 'me',
+    content: '네, 가능합니다. 현재 레거시 DB 구조 분석 중인데 예상보다 테이블이 많네요. 약 380개 테이블 확인됐습니다.',
+    timestamp: '2024-04-15T09:20:00',
+  },
+  {
+    id: 'pa-5',
+    senderId: 'lee-sujeong',
+    content: '380개요?? 생각보다 훨씬 많네요. 이거 어떤 버전 MySQL이에요?',
+    timestamp: '2024-04-15T09:22:00',
+  },
+  {
+    id: 'pa-6',
+    senderId: 'me',
+    content: 'MySQL 5.6입니다. 거기다 charset도 euckr로 되어있어서 utf8mb4 변환 작업도 필요해요.',
+    timestamp: '2024-04-15T09:25:00',
+  },
+  {
+    id: 'pa-7',
+    senderId: 'choi-lead',
+    content: '아, 그거 골치아프겠다. charset 변환하다가 데이터 깨진 사례 많으니까 신중하게. @이수정 백업 전략 먼저 수립해줘요.',
+    timestamp: '2024-04-15T09:28:00',
+    mentionIds: ['lee-sujeong'],
+  },
+  {
+    id: 'pa-8',
+    senderId: 'lee-sujeong',
+    content: '알겠습니다. 증분 백업 + 전체 백업 조합으로 전략 잡겠습니다. 오늘 오후까지 문서 올릴게요.',
+    timestamp: '2024-04-15T09:30:00',
+  },
+  {
+    id: 'pa-9',
+    senderId: 'park-minsu',
+    content: '테스트 환경 세팅 제가 맡을게요. 현재 스테이징 서버 스펙 어떻게 되나요?',
+    timestamp: '2024-04-15T09:45:00',
+  },
+  {
+    id: 'pa-10',
+    senderId: 'choi-lead',
+    content: 'AWS EC2 r5.2xlarge 2대. 근데 실제 프로덕션이랑 스펙 차이 있어서 성능 테스트 결과 해석할 때 주의해야 해요.',
+    timestamp: '2024-04-15T09:48:00',
+  },
+  {
+    id: 'pa-11',
+    senderId: 'jung-yeongu',
+    content: '데이터 분석 관점에서 말씀드리면, 마이그레이션 전후 데이터 정합성 검증이 핵심입니다. row count, checksum 비교 스크립트 제가 짜겠습니다.',
+    timestamp: '2024-04-15T10:00:00',
+  },
+  {
+    id: 'pa-12',
+    senderId: 'me',
+    content: '정연구님 감사합니다. 특히 외래키 제약조건 깨진 데이터가 꽤 있을 것 같아서 그 부분도 체크해주시면 좋겠어요.',
+    timestamp: '2024-04-15T10:05:00',
+    mentionIds: ['jung-yeongu'],
+  },
+  {
+    id: 'pa-13',
+    senderId: 'park-pm',
+    content: '고객사에서 오늘 오전에 연락이 왔는데요, 마이그레이션 중 서비스 다운타임이 최대 2시간이 한계라고 합니다. 이거 가능한가요?',
+    timestamp: '2024-04-15T10:30:00',
+  },
+  {
+    id: 'pa-14',
+    senderId: 'choi-lead',
+    content: '380개 테이블에 2시간이요? 쉽지 않겠는데... @고연구원 어떻게 생각해요?',
+    timestamp: '2024-04-15T10:33:00',
+    mentionIds: ['me'],
+  },
+  {
+    id: 'pa-15',
+    senderId: 'me',
+    content: '블루/그린 배포 방식으로 하면 다운타임 최소화 가능합니다. 다만 준비 기간이 더 필요해요. 1주일 정도 일정 추가되면 가능할 것 같습니다.',
+    timestamp: '2024-04-15T10:38:00',
+  },
+  {
+    id: 'pa-16',
+    senderId: 'park-pm',
+    content: '블루/그린이면 비용이 더 들텐데... 고객사에 비용 추가 설명해야 하나요?',
+    timestamp: '2024-04-15T10:40:00',
+  },
+  {
+    id: 'pa-17',
+    senderId: 'choi-lead',
+    content: '제가 오늘 오후에 고객사랑 미팅하면서 협의할게요. 일단 블루/그린으로 방향 잡고 진행합시다. @고연구원 관련 아키텍처 문서 오늘 중으로 초안 작성 부탁해요.',
+    timestamp: '2024-04-15T10:45:00',
+    mentionIds: ['me'],
+  },
+  {
+    id: 'pa-18',
+    senderId: 'me',
+    content: '네, 알겠습니다. 오후 5시까지 초안 올리겠습니다.',
+    timestamp: '2024-04-15T10:46:00',
+  },
+  {
+    id: 'pa-19',
+    senderId: 'kim-jiwon',
+    content: '저는 프론트엔드 쪽 API 엔드포인트 변경 영향도 분석하겠습니다. 마이그레이션 후 API 스펙 바뀌는 게 있나요?',
+    timestamp: '2024-04-15T11:00:00',
+  },
+  {
+    id: 'pa-20',
+    senderId: 'me',
+    content: '지금은 몰라요. DB 스키마 분석 끝나면 알 수 있을 것 같아요. 일단 API 변경 없는 방향으로 최대한 맞추겠습니다.',
+    timestamp: '2024-04-15T11:03:00',
+  },
+  {
+    id: 'pa-21',
+    senderId: 'lee-sujeong',
+    content: '백업 전략 문서 작성했습니다.',
+    timestamp: '2024-04-15T14:00:00',
+    attachments: [{ type: 'file', name: '마이그레이션_백업전략_v1.docx' }],
+  },
+  {
+    id: 'pa-22',
+    senderId: 'choi-lead',
+    content: '고객사 미팅 결과 공유합니다. 블루/그린 방식 승인받았고, 일정 1주일 연장도 OK. 비용은 인프라 비용만 추가하기로 협의됨.',
+    timestamp: '2024-04-15T16:30:00',
+  },
+  {
+    id: 'pa-23',
+    senderId: 'park-pm',
+    content: '수고하셨습니다! 공식 일정 업데이트 할게요.',
+    timestamp: '2024-04-15T16:32:00',
+  },
+  {
+    id: 'pa-24',
+    senderId: 'me',
+    content: '블루/그린 아키텍처 초안 공유합니다.',
+    timestamp: '2024-04-15T17:00:00',
+    attachments: [
+      { type: 'file', name: '블루그린_마이그레이션_아키텍처_v1.pdf' },
+      { type: 'image', name: '아키텍처_다이어그램.png' },
+    ],
+  },
+  {
+    id: 'pa-25',
+    senderId: 'choi-lead',
+    content: '잘 정리됐네요. 내일 팀 전체 리뷰 합시다.',
+    timestamp: '2024-04-15T17:15:00',
+  },
+  {
+    id: 'pa-26',
+    senderId: 'park-minsu',
+    content: '테스트 환경 구성 완료했습니다. 접속 정보는 별도 DM으로 드릴게요.',
+    timestamp: '2024-04-16T09:00:00',
+  },
+  {
+    id: 'pa-27',
+    senderId: 'jung-yeongu',
+    content: '정합성 검증 스크립트 1차 버전 완성했어요. 혹시 오늘 리뷰 가능하신 분 있나요?',
+    timestamp: '2024-04-16T09:30:00',
+    attachments: [{ type: 'file', name: 'data_validation.py' }],
+  },
+  {
+    id: 'pa-28',
+    senderId: 'me',
+    content: '오후 2시에 봐도 될까요? 제가 리뷰하겠습니다.',
+    timestamp: '2024-04-16T09:35:00',
+  },
+  {
+    id: 'pa-29',
+    senderId: 'jung-yeongu',
+    content: '좋습니다! 화상회의 링크 공유할게요.',
+    timestamp: '2024-04-16T09:37:00',
+    attachments: [{ type: 'link', name: 'Zoom 회의 링크', url: 'https://zoom.us/j/example' }],
+  },
+  {
+    id: 'pa-30',
+    senderId: 'choi-lead',
+    content: '팀원들 오늘 아키텍처 리뷰 미팅 오후 4시로 잡겠습니다. 전원 참석 부탁드려요.',
+    timestamp: '2024-04-16T10:00:00',
+  },
+  {
+    id: 'pa-31',
+    senderId: 'kim-jiwon',
+    content: '확인했습니다.',
+    timestamp: '2024-04-16T10:05:00',
+  },
+  {
+    id: 'pa-32',
+    senderId: 'lee-sujeong',
+    content: '네!',
+    timestamp: '2024-04-16T10:06:00',
+  },
+  {
+    id: 'pa-33',
+    senderId: 'park-minsu',
+    content: '참석하겠습니다.',
+    timestamp: '2024-04-16T10:07:00',
+  },
+  {
+    id: 'pa-34',
+    senderId: 'park-pm',
+    content: '저도 참석할게요.',
+    timestamp: '2024-04-16T10:08:00',
+  },
+  {
+    id: 'pa-35',
+    senderId: 'me',
+    content: '네, 4시에 뵙겠습니다.',
+    timestamp: '2024-04-16T10:09:00',
+  },
+  {
+    id: 'pa-36',
+    senderId: 'lee-sujeong',
+    content: '잠깐 공유할게요, charset 변환 테스트 해봤는데 일부 특수문자 깨지는 이슈 발견했어요. 특히 옛날 데이터에 있는 특수기호들이 문제입니다.',
+    timestamp: '2024-04-16T11:00:00',
+  },
+  {
+    id: 'pa-37',
+    senderId: 'me',
+    content: '예상했던 문제네요. 변환 전에 먼저 이상한 문자 다 잡아내는 스캔 스크립트가 필요할 것 같아요.',
+    timestamp: '2024-04-16T11:05:00',
+  },
+  {
+    id: 'pa-38',
+    senderId: 'choi-lead',
+    content: '그게 더 안전하겠네요. @이수정 @고연구원 협력해서 처리해주세요.',
+    timestamp: '2024-04-16T11:08:00',
+    mentionIds: ['lee-sujeong', 'me'],
+  },
+  {
+    id: 'pa-39',
+    senderId: 'me',
+    content: '알겠습니다. 이수정님이랑 같이 내일까지 스캔 스크립트 만들어볼게요.',
+    timestamp: '2024-04-16T11:10:00',
+  },
+  {
+    id: 'pa-40',
+    senderId: 'park-pm',
+    content: '고객사에서 4월 20일에 중간 보고 요청이 왔습니다. 간단한 PPT 자료 필요한데 담당자 정해야 할 것 같아요.',
+    timestamp: '2024-04-16T14:00:00',
+  },
+  {
+    id: 'pa-41',
+    senderId: 'choi-lead',
+    content: '@고연구원 기술 파트 담당해주고, 박매니저님이 전체 취합해서 완성해주세요.',
+    timestamp: '2024-04-16T14:05:00',
+    mentionIds: ['me'],
+  },
+  {
+    id: 'pa-42',
+    senderId: 'me',
+    content: '네, 기술 파트 슬라이드 4/19 오전까지 드릴게요.',
+    timestamp: '2024-04-16T14:07:00',
+  },
+  {
+    id: 'pa-43',
+    senderId: 'jung-yeongu',
+    content: '리뷰 끝났습니다! @고연구원 코드 깔끔하게 잘 짜셨네요. 한 가지만 - 대용량 테이블은 청크 단위로 처리하도록 수정 제안드립니다.',
+    timestamp: '2024-04-16T15:30:00',
+    mentionIds: ['me'],
+    reactions: [{ emoji: '👍', count: 2 }],
+  },
+  {
+    id: 'pa-44',
+    senderId: 'me',
+    content: '좋은 의견 감사합니다. 청크 사이즈 10만 row로 설정하면 어떨까요?',
+    timestamp: '2024-04-16T15:35:00',
+  },
+  {
+    id: 'pa-45',
+    senderId: 'jung-yeongu',
+    content: '테이블 크기에 따라 가변적으로 가는 게 더 좋을 것 같아요. 5만~20만 사이에서 조정하는 로직으로요.',
+    timestamp: '2024-04-16T15:38:00',
+  },
+  {
+    id: 'pa-46',
+    senderId: 'me',
+    content: '동의합니다. 수정할게요.',
+    timestamp: '2024-04-16T15:40:00',
+  },
+  {
+    id: 'pa-47',
+    senderId: 'choi-lead',
+    content: '아키텍처 리뷰 미팅 요약: 1) 블루/그린 방식 확정 2) charset 변환 스캔 스크립트 추가 3) 청크 처리 로직 적용 4) 중간 보고 4/20 예정. 다음 주 화요일 진행상황 공유해주세요.',
+    timestamp: '2024-04-16T17:00:00',
+  },
+  {
+    id: 'pa-48',
+    senderId: 'park-pm',
+    content: '미팅 정리 감사합니다! 내용 노션에 업데이트 할게요.',
+    timestamp: '2024-04-16T17:05:00',
+  },
+  {
+    id: 'pa-49',
+    senderId: 'me',
+    content: '오늘 charset 스캔 작업하면서 발견한 이슈 공유합니다. 총 1,247개 행에서 깨진 문자 발견. 대부분 1998~2003년 사이 입력 데이터입니다.',
+    timestamp: '2024-04-17T09:00:00',
+  },
+  {
+    id: 'pa-50',
+    senderId: 'lee-sujeong',
+    content: '상세 내역은 여기 있어요.',
+    timestamp: '2024-04-17T09:05:00',
+    attachments: [{ type: 'file', name: 'charset_issues_report.csv' }],
+  },
+  {
+    id: 'pa-51',
+    senderId: 'choi-lead',
+    content: '1,247개면 수동 처리는 어렵겠고... 자동 변환 로직 만들 수 있을까요?',
+    timestamp: '2024-04-17T09:10:00',
+  },
+  {
+    id: 'pa-52',
+    senderId: 'me',
+    content: '대부분 패턴이 있어서 90% 정도는 자동화 가능할 것 같아요. 나머지 10%는 수동 처리 필요합니다.',
+    timestamp: '2024-04-17T09:13:00',
+  },
+  {
+    id: 'pa-53',
+    senderId: 'park-pm',
+    content: '수동 처리 담당 인력이 필요한데 QA팀에 요청해도 될까요?',
+    timestamp: '2024-04-17T09:15:00',
+  },
+  {
+    id: 'pa-54',
+    senderId: 'park-minsu',
+    content: '저희 QA팀에서 지원 가능합니다. 몇 명이나 필요한가요?',
+    timestamp: '2024-04-17T09:17:00',
+  },
+  {
+    id: 'pa-55',
+    senderId: 'me',
+    content: '2~3명이면 충분할 것 같아요. 작업 지침서 제가 만들겠습니다.',
+    timestamp: '2024-04-17T09:20:00',
+  },
+  {
+    id: 'pa-56',
+    senderId: 'choi-lead',
+    content: '좋아요. 진행하세요. @고연구원 작업 지침서 내일까지 완성해주세요.',
+    timestamp: '2024-04-17T09:22:00',
+    mentionIds: ['me'],
+  },
+  {
+    id: 'pa-57',
+    senderId: 'me',
+    content: '알겠습니다.',
+    timestamp: '2024-04-17T09:23:00',
+  },
+  {
+    id: 'pa-58',
+    senderId: 'kim-jiwon',
+    content: 'API 영향도 분석 완료했어요. 총 47개 API 중 12개가 변경 가능성 있습니다. 자세한 내용은 아래 문서 참고해주세요.',
+    timestamp: '2024-04-17T11:00:00',
+    attachments: [{ type: 'file', name: 'API_영향도_분석서.xlsx' }],
+  },
+  {
+    id: 'pa-59',
+    senderId: 'me',
+    content: '고마워요 지원씨. 12개는 꽤 되네요. 어떤 API들인지 나중에 같이 봐도 될까요?',
+    timestamp: '2024-04-17T11:05:00',
+  },
+  {
+    id: 'pa-60',
+    senderId: 'kim-jiwon',
+    content: '물론이죠! 오후 3시 어때요?',
+    timestamp: '2024-04-17T11:07:00',
+  },
+  {
+    id: 'pa-61',
+    senderId: 'me',
+    content: '3시 좋습니다.',
+    timestamp: '2024-04-17T11:08:00',
+  },
+  {
+    id: 'pa-62',
+    senderId: 'park-pm',
+    content: '중간 보고 자료 최종본입니다. @고연구원 @최팀장 검토 부탁드려요.',
+    timestamp: '2024-04-19T10:00:00',
+    mentionIds: ['me', 'choi-lead'],
+    attachments: [{ type: 'file', name: '중간보고_v2_final.pptx' }],
+  },
+  {
+    id: 'pa-63',
+    senderId: 'choi-lead',
+    content: '확인했어요. p.7 기술 스택 부분 좀 더 구체적으로 써주면 좋겠어요.',
+    timestamp: '2024-04-19T10:30:00',
+  },
+  {
+    id: 'pa-64',
+    senderId: 'me',
+    content: '제가 수정할게요. 한 시간 내로 업데이트 드릴게요.',
+    timestamp: '2024-04-19T10:32:00',
+  },
+  {
+    id: 'pa-65',
+    senderId: 'me',
+    content: '수정본 올렸습니다.',
+    timestamp: '2024-04-19T11:25:00',
+    attachments: [{ type: 'file', name: '중간보고_v3_final.pptx' }],
+  },
+  {
+    id: 'pa-66',
+    senderId: 'choi-lead',
+    content: '👍 이걸로 갑시다.',
+    timestamp: '2024-04-19T11:30:00',
+    reactions: [{ emoji: '👍', count: 3 }],
+  },
+  {
+    id: 'pa-67',
+    senderId: 'park-pm',
+    content: '중간 보고 완료! 고객사 반응 좋았습니다. 특히 블루/그린 방식에 대해 긍정적이었어요.',
+    timestamp: '2024-04-20T15:00:00',
+  },
+  {
+    id: 'pa-68',
+    senderId: 'choi-lead',
+    content: '수고했어요! 이제 2단계 본격 시작합니다. @고연구원 charset 자동 변환 스크립트 진행상황 어때요?',
+    timestamp: '2024-04-20T15:10:00',
+    mentionIds: ['me'],
+  },
+  {
+    id: 'pa-69',
+    senderId: 'me',
+    content: '80% 완성됐어요. 내일 QA 테스트 진행 예정입니다.',
+    timestamp: '2024-04-20T15:13:00',
+  },
+  {
+    id: 'pa-70',
+    senderId: 'park-minsu',
+    content: '테스트 시나리오 준비해놓겠습니다.',
+    timestamp: '2024-04-20T15:15:00',
+  },
+  {
+    id: 'pa-71',
+    senderId: 'lee-sujeong',
+    content: '스테이징 DB에 오늘 밤 중으로 테스트 데이터 세팅해둘게요.',
+    timestamp: '2024-04-20T15:17:00',
+  },
+  {
+    id: 'pa-72',
+    senderId: 'jung-yeongu',
+    content: '정합성 검증 스크립트 v2 업데이트했습니다. 청크 처리 및 에러 리포팅 강화했어요.',
+    timestamp: '2024-04-21T09:00:00',
+    attachments: [{ type: 'file', name: 'data_validation_v2.py' }],
+  },
+  {
+    id: 'pa-73',
+    senderId: 'me',
+    content: '오늘 charset 변환 스크립트 QA 완료. 테스트 데이터 기준 99.2% 성공률. 실패한 0.8%는 케이스 목록 만들었어요.',
+    timestamp: '2024-04-21T17:00:00',
+    attachments: [{ type: 'file', name: 'charset_변환_QA결과.pdf' }],
+  },
+  {
+    id: 'pa-74',
+    senderId: 'choi-lead',
+    content: '99.2%면 훌륭한데요! 0.8%는 수동 처리로요?',
+    timestamp: '2024-04-21T17:05:00',
+  },
+  {
+    id: 'pa-75',
+    senderId: 'me',
+    content: '네, 총 약 124개 행 정도입니다. QA팀 지원받아서 처리 가능할 것 같아요.',
+    timestamp: '2024-04-21T17:07:00',
+  },
+  {
+    id: 'pa-76',
+    senderId: 'park-minsu',
+    content: '저희 팀원 2명 내일부터 붙을게요.',
+    timestamp: '2024-04-21T17:09:00',
+  },
+  {
+    id: 'pa-77',
+    senderId: 'park-pm',
+    content: '일정 체크: 현재 약 3일 앞서가고 있어요. 계속 이 속도로 가면 좋겠습니다!',
+    timestamp: '2024-04-22T09:00:00',
+    reactions: [{ emoji: '🎉', count: 4 }],
+  },
+  {
+    id: 'pa-78',
+    senderId: 'kim-jiwon',
+    content: '프론트 API 호환성 작업 시작했어요. 변경 필요한 12개 API 중 8개 완료했습니다.',
+    timestamp: '2024-04-22T11:00:00',
+  },
+  {
+    id: 'pa-79',
+    senderId: 'me',
+    content: '잘되고 있네요! 나머지 4개 혹시 복잡한 거 있으면 같이 봐요.',
+    timestamp: '2024-04-22T11:05:00',
+  },
+  {
+    id: 'pa-80',
+    senderId: 'kim-jiwon',
+    content: '주문 히스토리 API가 좀 복잡한데, 이따 오후에 같이 봐도 될까요?',
+    timestamp: '2024-04-22T11:07:00',
+  },
+  {
+    id: 'pa-81',
+    senderId: 'me',
+    content: '오후 2시 어때요?',
+    timestamp: '2024-04-22T11:08:00',
+  },
+  {
+    id: 'pa-82',
+    senderId: 'kim-jiwon',
+    content: '좋아요!',
+    timestamp: '2024-04-22T11:09:00',
+  },
+  {
+    id: 'pa-83',
+    senderId: 'lee-sujeong',
+    content: '전체 데이터 이전 드라이런 완료! 약 2.3TB 데이터 이전 시간: 1시간 43분. 다운타임 2시간 내 충분히 가능합니다!',
+    timestamp: '2024-04-23T16:00:00',
+    reactions: [{ emoji: '🎉', count: 5 }],
+  },
+  {
+    id: 'pa-84',
+    senderId: 'choi-lead',
+    content: '완벽해요! 이수정씨 수고했어요. 이제 실전 D-day만 남았네요.',
+    timestamp: '2024-04-23T16:10:00',
+  },
+  {
+    id: 'pa-85',
+    senderId: 'me',
+    content: '수고하셨습니다! 저도 마이그레이션 후 서비스 헬스체크 스크립트 준비 완료했어요.',
+    timestamp: '2024-04-23T16:15:00',
+  },
+  {
+    id: 'pa-86',
+    senderId: 'park-pm',
+    content: '최종 D-day는 5월 15일 새벽 2시로 확정됐습니다. 전원 대기해주세요.',
+    timestamp: '2024-04-24T09:00:00',
+  },
+  {
+    id: 'pa-87',
+    senderId: 'choi-lead',
+    content: '모두 수고하고 있어요. 마지막 스퍼트 열심히 합시다! 화이팅!',
+    timestamp: '2024-04-24T09:05:00',
+    reactions: [{ emoji: '💪', count: 6 }],
+  },
+];
+
+// 개발팀 채널
+const devTeamMessages: Message[] = [
+  {
+    id: 'dt-1',
+    senderId: 'choi-lead',
+    content: 'React 18 → Next.js 14 업그레이드 논의해봅시다. 찬반 의견?',
+    timestamp: '2024-04-22T10:00:00',
+  },
+  {
+    id: 'dt-2',
+    senderId: 'kim-jiwon',
+    content: 'Server Components 쓰면 번들 사이즈 확실히 줄어들어요. 강하게 찬성!',
+    timestamp: '2024-04-22T10:05:00',
+  },
+  {
+    id: 'dt-3',
+    senderId: 'me',
+    content: '근데 기존 클라이언트 코드 많아서 마이그레이션 비용이 걱정됩니다. 페이지 단위로 점진적으로 가면 어떨까요?',
+    timestamp: '2024-04-22T10:08:00',
+  },
+  {
+    id: 'dt-4',
+    senderId: 'lee-sujeong',
+    content: '백엔드 입장에선 RSC로 API 호출 줄어들면 DB 부담도 줄어서 좋을 것 같아요.',
+    timestamp: '2024-04-22T10:10:00',
+  },
+  {
+    id: 'dt-5',
+    senderId: 'choi-lead',
+    content: '좋아요. 신규 페이지부터 App Router 적용하는 걸로 합시다.',
+    timestamp: '2024-04-22T10:15:00',
+  },
+  {
+    id: 'dt-6',
+    senderId: 'me',
+    content: 'PR 올렸습니다. 코드 리뷰 부탁드려요.',
+    timestamp: '2024-04-22T14:00:00',
+    attachments: [{ type: 'link', name: 'GitHub PR #234', url: 'https://github.com/example' }],
+  },
+  {
+    id: 'dt-7',
+    senderId: 'kim-jiwon',
+    content: '확인해볼게요!',
+    timestamp: '2024-04-22T14:05:00',
+  },
+  {
+    id: 'dt-8',
+    senderId: 'kim-jiwon',
+    content: '@고연구원 useCallback 빠진 부분이 있어요. 리렌더링 이슈 생길 수 있어요.',
+    timestamp: '2024-04-22T14:30:00',
+    mentionIds: ['me'],
+  },
+  {
+    id: 'dt-9',
+    senderId: 'me',
+    content: '아 맞아요! 수정했어요. 감사합니다.',
+    timestamp: '2024-04-22T14:45:00',
+  },
+  {
+    id: 'dt-10',
+    senderId: 'lee-sujeong',
+    content: 'Prisma ORM 도입 논의해볼 시간 있나요? 기존 raw SQL이 너무 많아서 관리가 힘들어요.',
+    timestamp: '2024-04-23T09:00:00',
+  },
+  {
+    id: 'dt-11',
+    senderId: 'choi-lead',
+    content: '좋은 제안이에요. 목요일 개발 미팅에서 논의합시다.',
+    timestamp: '2024-04-23T09:05:00',
+  },
+  {
+    id: 'dt-12',
+    senderId: 'me',
+    content: '저도 Prisma 긍정적으로 봐요. type-safe하니까 버그 잡기 편하더라고요.',
+    timestamp: '2024-04-23T09:08:00',
+  },
+  {
+    id: 'dt-13',
+    senderId: 'park-minsu',
+    content: '오늘 CI/CD 파이프라인 유닛 테스트 커버리지 72%에서 81%로 올라갔어요!',
+    timestamp: '2024-04-23T15:00:00',
+    reactions: [{ emoji: '👏', count: 3 }],
+  },
+  {
+    id: 'dt-14',
+    senderId: 'choi-lead',
+    content: '민수씨 수고했어요! 목표 80% 달성!',
+    timestamp: '2024-04-23T15:05:00',
+  },
+  {
+    id: 'dt-15',
+    senderId: 'me',
+    content: '고생하셨어요. 어떤 부분 테스트 추가했어요?',
+    timestamp: '2024-04-23T15:08:00',
+  },
+  {
+    id: 'dt-16',
+    senderId: 'park-minsu',
+    content: '주로 결제 모듈 엣지 케이스들이요. 생각보다 빠진 케이스가 많더라고요.',
+    timestamp: '2024-04-23T15:10:00',
+  },
+  {
+    id: 'dt-17',
+    senderId: 'choi-lead',
+    content: '코드 리뷰 리마인드: PR은 24시간 내 리뷰 원칙 지켜주세요. 지금 묵힌 PR들 좀 있어요.',
+    timestamp: '2024-04-24T09:00:00',
+  },
+  {
+    id: 'dt-18',
+    senderId: 'me',
+    content: '죄송합니다 제 큐에 있는 것들 오늘 처리할게요.',
+    timestamp: '2024-04-24T09:05:00',
+  },
+  {
+    id: 'dt-19',
+    senderId: 'kim-jiwon',
+    content: '저도요! 바로 처리하겠습니다.',
+    timestamp: '2024-04-24T09:06:00',
+  },
+  {
+    id: 'dt-20',
+    senderId: 'lee-sujeong',
+    content: '서버 에러 모니터링 슬랙 연동 완료했어요. 이제 에러 발생하면 여기로 바로 옵니다.',
+    timestamp: '2024-04-24T11:00:00',
+  },
+  {
+    id: 'dt-21',
+    senderId: 'me',
+    content: '오, 유용하겠네요. 어떤 에러 레벨부터 알림 오나요?',
+    timestamp: '2024-04-24T11:05:00',
+  },
+  {
+    id: 'dt-22',
+    senderId: 'lee-sujeong',
+    content: 'ERROR 이상만 오게 설정했어요. WARNING은 너무 많을 것 같아서요.',
+    timestamp: '2024-04-24T11:07:00',
+  },
+  {
+    id: 'dt-23',
+    senderId: 'choi-lead',
+    content: '좋아요. 팀원들 한번씩 에러 처리 코드 다시 점검해주세요.',
+    timestamp: '2024-04-24T11:10:00',
+  },
+  {
+    id: 'dt-24',
+    senderId: 'me',
+    content: '스택오버플로우 이제 너무 오래됐으니 AI 코딩 어시스턴트 팀에 도입하면 어떨까요? GitHub Copilot이나 Cursor...',
+    timestamp: '2024-04-24T14:00:00',
+  },
+  {
+    id: 'dt-25',
+    senderId: 'kim-jiwon',
+    content: 'Cursor 쓰는 데 진짜 생산성 2배는 되는 것 같아요. 강추!',
+    timestamp: '2024-04-24T14:03:00',
+  },
+  {
+    id: 'dt-26',
+    senderId: 'choi-lead',
+    content: '보안 정책 검토 후 도입 검토해볼게요. 코드 외부 전송 이슈가 있어서.',
+    timestamp: '2024-04-24T14:08:00',
+  },
+  {
+    id: 'dt-27',
+    senderId: 'me',
+    content: 'GitHub Copilot은 엔터프라이즈 플랜이면 코드 저장 안 된다고 하더라고요.',
+    timestamp: '2024-04-24T14:10:00',
+  },
+  {
+    id: 'dt-28',
+    senderId: 'choi-lead',
+    content: '그 부분 공식 문서 링크로 공유해주면 검토해볼게요.',
+    timestamp: '2024-04-24T14:12:00',
+  },
+  {
+    id: 'dt-29',
+    senderId: 'me',
+    content: '네, 찾아서 공유드릴게요.',
+    timestamp: '2024-04-24T14:13:00',
+    attachments: [{ type: 'link', name: 'GitHub Copilot 보안 정책', url: 'https://docs.github.com' }],
+  },
+  {
+    id: 'dt-30',
+    senderId: 'choi-lead',
+    content: '오늘도 수고했습니다!',
+    timestamp: '2024-04-24T18:00:00',
+  },
+];
+
+// 디자인팀
+const designTeamMessages: Message[] = [
+  {
+    id: 'di-1',
+    senderId: 'park-pm',
+    content: '새 대시보드 디자인 시안 공유합니다. 피드백 부탁드려요!',
+    timestamp: '2024-04-22T10:00:00',
+    attachments: [{ type: 'image', name: '대시보드_시안_v1.png' }],
+  },
+  {
+    id: 'di-2',
+    senderId: 'kim-jiwon',
+    content: '전체적으로 깔끔한데요. 오른쪽 사이드바 위젯 크기가 좀 크게 느껴져요.',
+    timestamp: '2024-04-22T10:30:00',
+  },
+  {
+    id: 'di-3',
+    senderId: 'me',
+    content: '모바일 버전도 있나요? 반응형 체크 해보고 싶어요.',
+    timestamp: '2024-04-22T10:35:00',
+  },
+  {
+    id: 'di-4',
+    senderId: 'park-pm',
+    content: '모바일은 아직 없어요. 다음 버전에서 추가할게요.',
+    timestamp: '2024-04-22T10:40:00',
+  },
+  {
+    id: 'di-5',
+    senderId: 'choi-lead',
+    content: '색상 팔레트 통일해줬으면 좋겠어요. 버튼 색상이 페이지마다 달라요.',
+    timestamp: '2024-04-22T11:00:00',
+  },
+  {
+    id: 'di-6',
+    senderId: 'park-pm',
+    content: '맞아요, 디자인 시스템 먼저 잡고 가야 할 것 같아요. 다음 주 중으로 컬러 가이드 만들어볼게요.',
+    timestamp: '2024-04-22T11:05:00',
+  },
+  {
+    id: 'di-7',
+    senderId: 'kim-jiwon',
+    content: 'Figma에 컴포넌트 라이브러리 만들면 어떨까요? 나중에 개발할 때도 편하고요.',
+    timestamp: '2024-04-22T11:10:00',
+  },
+  {
+    id: 'di-8',
+    senderId: 'park-pm',
+    content: '좋은 생각이에요! 같이 만들어봐요.',
+    timestamp: '2024-04-22T11:12:00',
+  },
+  {
+    id: 'di-9',
+    senderId: 'me',
+    content: 'Storybook이랑 연동하면 더 좋을 것 같아요.',
+    timestamp: '2024-04-22T11:15:00',
+  },
+  {
+    id: 'di-10',
+    senderId: 'park-pm',
+    content: '리뷰 결과 반영한 v2 시안 올렸습니다.',
+    timestamp: '2024-04-23T14:00:00',
+    attachments: [{ type: 'image', name: '대시보드_시안_v2.png' }],
+  },
+  {
+    id: 'di-11',
+    senderId: 'kim-jiwon',
+    content: '훨씬 낫네요! 이제 통일감이 있어요.',
+    timestamp: '2024-04-23T14:20:00',
+    reactions: [{ emoji: '👍', count: 2 }],
+  },
+  {
+    id: 'di-12',
+    senderId: 'choi-lead',
+    content: '좋아요. 이걸로 개발 들어가세요.',
+    timestamp: '2024-04-23T14:30:00',
+  },
+  {
+    id: 'di-13',
+    senderId: 'me',
+    content: '컴포넌트 구현 시작할게요. 예상 2주 소요입니다.',
+    timestamp: '2024-04-23T14:35:00',
+  },
+  {
+    id: 'di-14',
+    senderId: 'park-pm',
+    content: '아이콘셋은 어떤 거 쓸까요? Heroicons vs Lucide 의견 주세요.',
+    timestamp: '2024-04-24T09:00:00',
+  },
+  {
+    id: 'di-15',
+    senderId: 'kim-jiwon',
+    content: 'Lucide 추천! 더 예쁘고 종류도 많아요.',
+    timestamp: '2024-04-24T09:05:00',
+  },
+  {
+    id: 'di-16',
+    senderId: 'me',
+    content: '저도 Lucide 좋아요. tree-shakeable이라 번들 사이즈도 작아요.',
+    timestamp: '2024-04-24T09:07:00',
+  },
+  {
+    id: 'di-17',
+    senderId: 'park-pm',
+    content: 'Lucide로 결정! 반영하겠습니다.',
+    timestamp: '2024-04-24T09:10:00',
+  },
+  {
+    id: 'di-18',
+    senderId: 'choi-lead',
+    content: '다크모드도 지원해야 할까요?',
+    timestamp: '2024-04-24T10:00:00',
+  },
+  {
+    id: 'di-19',
+    senderId: 'park-pm',
+    content: '이번 버전엔 없어도 될 것 같아요. 다음 분기 요구사항으로 넣겠습니다.',
+    timestamp: '2024-04-24T10:05:00',
+  },
+  {
+    id: 'di-20',
+    senderId: 'me',
+    content: '처음부터 CSS 변수로 잘 설계하면 나중에 다크모드 추가 쉬워요.',
+    timestamp: '2024-04-24T10:08:00',
+  },
+];
+
+// 임원진
+const executiveMessages: Message[] = [
+  {
+    id: 'ex-1',
+    senderId: 'yoon-ceo',
+    content: '이번 마이그레이션 프로젝트 예산 추가 승인 요청드립니다. 인프라 비용 추가로 약 500만원 필요합니다.',
+    timestamp: '2024-04-16T09:00:00',
+  },
+  {
+    id: 'ex-2',
+    senderId: 'choi-lead',
+    content: '블루/그린 방식으로 변경하면서 추가 비용이 발생했습니다. 상세 내역 첨부드립니다.',
+    timestamp: '2024-04-16T09:05:00',
+    attachments: [{ type: 'file', name: '추가비용_상세내역.xlsx' }],
+  },
+  {
+    id: 'ex-3',
+    senderId: 'yoon-ceo',
+    content: '확인했습니다. 예산 승인 드립니다.',
+    timestamp: '2024-04-16T10:00:00',
+  },
+  {
+    id: 'ex-4',
+    senderId: 'choi-lead',
+    content: '감사합니다.',
+    timestamp: '2024-04-16T10:02:00',
+  },
+  {
+    id: 'ex-5',
+    senderId: 'yoon-ceo',
+    content: '5월 15일 마이그레이션 당일 임원 보고 자료 필요합니다. 1페이지 요약본으로 준비해주세요.',
+    timestamp: '2024-04-20T14:00:00',
+  },
+  {
+    id: 'ex-6',
+    senderId: 'park-pm',
+    content: '네, 5/14까지 준비하겠습니다.',
+    timestamp: '2024-04-20T14:05:00',
+  },
+  {
+    id: 'ex-7',
+    senderId: 'yoon-ceo',
+    content: '그리고 혹시 일정 앞당기기 힘든가요? 고객사에서 5/10으로 요청이 왔습니다.',
+    timestamp: '2024-04-22T11:00:00',
+  },
+  {
+    id: 'ex-8',
+    senderId: 'choi-lead',
+    content: '현재 일정 진행상황상 5/10은 위험합니다. 최소 5/12 이후는 돼야 할 것 같습니다.',
+    timestamp: '2024-04-22T11:10:00',
+  },
+  {
+    id: 'ex-9',
+    senderId: 'yoon-ceo',
+    content: '알겠습니다. 5/12로 고객사와 협의해보겠습니다.',
+    timestamp: '2024-04-22T11:15:00',
+  },
+  {
+    id: 'ex-10',
+    senderId: 'yoon-ceo',
+    content: '5/12로 최종 확정됐습니다. 일정 수정 부탁드립니다.',
+    timestamp: '2024-04-23T09:00:00',
+  },
+];
+
+// 점심메뉴
+const lunchMessages: Message[] = [
+  {
+    id: 'lu-1',
+    senderId: 'kim-jiwon',
+    content: '오늘 점심 뭐 먹어요?',
+    timestamp: '2024-04-24T11:30:00',
+  },
+  {
+    id: 'lu-2',
+    senderId: 'me',
+    content: '저는 회사 근처 새로 생긴 국밥집 가보고 싶어요.',
+    timestamp: '2024-04-24T11:32:00',
+  },
+  {
+    id: 'lu-3',
+    senderId: 'lee-sujeong',
+    content: '국밥 좋아요! 어디요?',
+    timestamp: '2024-04-24T11:33:00',
+  },
+  {
+    id: 'lu-4',
+    senderId: 'me',
+    content: '회사 앞 "원조 부산 돼지국밥" 아시죠? 오픈한 지 3일밖에 안됐는데 줄 서더라고요.',
+    timestamp: '2024-04-24T11:35:00',
+  },
+  {
+    id: 'lu-5',
+    senderId: 'park-minsu',
+    content: '저도! 근데 줄 길면 어떡하죠? 빨리 나가야겠다.',
+    timestamp: '2024-04-24T11:36:00',
+  },
+  {
+    id: 'lu-6',
+    senderId: 'kim-jiwon',
+    content: '12시 정각에 나가요? 11:55에 미리 내려가는 건 어때요 ㅋㅋ',
+    timestamp: '2024-04-24T11:38:00',
+  },
+  {
+    id: 'lu-7',
+    senderId: 'me',
+    content: 'ㅋㅋㅋ 찬성! 11:55 로비 집합',
+    timestamp: '2024-04-24T11:39:00',
+    reactions: [{ emoji: '😂', count: 3 }],
+  },
+  {
+    id: 'lu-8',
+    senderId: 'jung-yeongu',
+    content: '저는 오늘 약속있어서 ㅠ 다음에 같이 가요',
+    timestamp: '2024-04-24T11:40:00',
+  },
+  {
+    id: 'lu-9',
+    senderId: 'lee-sujeong',
+    content: '오케이! 후기 알려드릴게요 정연구님',
+    timestamp: '2024-04-24T11:41:00',
+  },
+  {
+    id: 'lu-10',
+    senderId: 'me',
+    content: '국밥 후기: 진짜 맛있어요!! 순대도 추가했는데 대박. 다들 꼭 가보세요.',
+    timestamp: '2024-04-24T13:10:00',
+    reactions: [{ emoji: '😋', count: 4 }],
+  },
+  {
+    id: 'lu-11',
+    senderId: 'jung-yeongu',
+    content: '오... 다음에 같이 가고 싶다!',
+    timestamp: '2024-04-24T13:12:00',
+  },
+  {
+    id: 'lu-12',
+    senderId: 'choi-lead',
+    content: '나만 빠졌네요 ㅜㅜ 다음에 팀 회식으로 가봅시다',
+    timestamp: '2024-04-24T13:15:00',
+  },
+  {
+    id: 'lu-13',
+    senderId: 'kim-jiwon',
+    content: '찬성!! 팀장님도 가셔야죠',
+    timestamp: '2024-04-24T13:17:00',
+  },
+  {
+    id: 'lu-14',
+    senderId: 'me',
+    content: '내일 점심도 거기 가요 우리?',
+    timestamp: '2024-04-24T13:20:00',
+  },
+  {
+    id: 'lu-15',
+    senderId: 'park-minsu',
+    content: '매일 국밥은 좀... ㅋㅋ 내일은 짜장면 어때요?',
+    timestamp: '2024-04-24T13:22:00',
+    reactions: [{ emoji: '😄', count: 2 }],
+  },
+];
+
+export const chatRooms: ChatRoom[] = [
+  {
+    id: 'project-a',
+    name: '프로젝트A',
+    description: '고객사 시스템 마이그레이션 프로젝트',
+    memberIds: ['me', 'choi-lead', 'park-pm', 'kim-jiwon', 'lee-sujeong', 'park-minsu', 'jung-yeongu'],
+    messages: projectAMessages,
+    unreadCount: 12,
+    lastActivity: '2024-04-24T09:05:00',
+    category: 'project',
+    isPinned: true,
+  },
+  {
+    id: 'dev-team',
+    name: '개발팀',
+    description: '개발팀 내부 커뮤니케이션',
+    memberIds: ['me', 'choi-lead', 'kim-jiwon', 'lee-sujeong', 'park-minsu'],
+    messages: devTeamMessages,
+    unreadCount: 5,
+    lastActivity: '2024-04-24T18:00:00',
+    category: 'team',
+  },
+  {
+    id: 'design-team',
+    name: '디자인팀',
+    description: 'UI/UX 디자인 협업 채널',
+    memberIds: ['me', 'park-pm', 'kim-jiwon', 'choi-lead'],
+    messages: designTeamMessages,
+    unreadCount: 3,
+    lastActivity: '2024-04-24T10:08:00',
+    category: 'team',
+  },
+  {
+    id: 'executive',
+    name: '임원진',
+    description: '임원진 결정사항 공유',
+    memberIds: ['choi-lead', 'park-pm', 'yoon-ceo'],
+    messages: executiveMessages,
+    unreadCount: 1,
+    lastActivity: '2024-04-23T09:00:00',
+    category: 'executive',
+  },
+  {
+    id: 'lunch',
+    name: '점심메뉴',
+    description: '점심 뭐 먹지?',
+    memberIds: ['me', 'choi-lead', 'kim-jiwon', 'lee-sujeong', 'park-minsu', 'jung-yeongu'],
+    messages: lunchMessages,
+    unreadCount: 0,
+    lastActivity: '2024-04-24T13:22:00',
+    category: 'casual',
+  },
+];
+
+export const getChatRoom = (id: string) => chatRooms.find(r => r.id === id);
+export const getTotalUnread = () => chatRooms.reduce((sum, r) => sum + r.unreadCount, 0);
