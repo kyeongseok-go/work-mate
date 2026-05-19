@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Sparkles, X, Layers } from 'lucide-react';
 import { useFeatureStore } from '@/store/featureStore';
+import { useSummaryCache } from '@/store/summaryStore';
 import { Message } from '@/data/messages';
 import { SummaryResult } from '@/app/api/summarize/route';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -268,6 +269,22 @@ export function SmartCatchup({
   }, [messages, unreadCount]);
   const wasCapped = unreadCount > MAX_SUMMARIZE;
 
+  // Identifies the exact conversation state a summary was produced from.
+  // Same signature ⇒ a prior summary can be reused without re-calling the AI;
+  // a new/changed message shifts it and naturally invalidates the cache.
+  const signature = useMemo(() => {
+    const first = catchup[0];
+    const last = catchup[catchup.length - 1];
+    return [
+      roomId,
+      unreadCount,
+      catchup.length,
+      first?.id ?? '',
+      last?.id ?? '',
+      last?.timestamp ?? '',
+    ].join('|');
+  }, [roomId, unreadCount, catchup]);
+
   // Feature gate — render nothing when toggle is OFF
   if (!features.smartCatchup) return null;
 
@@ -278,6 +295,16 @@ export function SmartCatchup({
   if (dismissed && loadState === 'idle') return null;
 
   const handleSummarize = async () => {
+    // Cache hit — same conversation state as a previous summary. Show it
+    // instantly without a loading spinner or another AI call. This is what
+    // makes "요약창 → 채팅창 → 다시 보기" reuse the result instead of redoing it.
+    const cached = useSummaryCache.getState().lookup(roomId, signature);
+    if (cached) {
+      setSummary(cached);
+      setLoadState('success');
+      return;
+    }
+
     setLoadState('loading');
     setErrorMessage('');
 
@@ -294,7 +321,9 @@ export function SmartCatchup({
         throw new Error(json.error || 'AI 요약 중 오류가 발생했습니다.');
       }
 
-      setSummary(json.data as SummaryResult);
+      const data = json.data as SummaryResult;
+      useSummaryCache.getState().save(roomId, signature, data);
+      setSummary(data);
       setLoadState('success');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'AI 요약 중 오류가 발생했습니다.';
