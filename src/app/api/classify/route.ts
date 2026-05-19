@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 
 import { callClaude } from '@/lib/claude';
+import { parseLenientJson } from '@/lib/json';
 import { type Notification } from '@/data/notifications';
 import {
   type Severity,
@@ -67,17 +68,10 @@ const SYSTEM_PROMPT = `당신은 기업 메신저 알림을 분류하고 다음 
 ]`;
 
 function parseClassificationResult(raw: string): ClassifiedNotification[] {
-  const stripped = raw
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
-
-  const parsed = JSON.parse(stripped);
-
-  if (!Array.isArray(parsed)) {
-    throw new Error('분류 결과가 배열 형식이 아닙니다.');
-  }
+  // Top-level array; tolerates ```json fences and truncation. A truncated
+  // body degrades to the items that did parse rather than 500-ing.
+  const { value } = parseLenientJson<unknown>(raw);
+  const parsed: unknown[] = Array.isArray(value) ? value : [];
 
   return parsed.map((item: unknown) => {
     const entry = item as Record<string, unknown>;

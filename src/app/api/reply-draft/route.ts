@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 
 import { callClaude } from '@/lib/claude';
+import { parseLenientJson } from '@/lib/json';
 import { Message } from '@/data/messages';
 
 export interface ReplyDrafts {
@@ -58,13 +59,8 @@ ${context}
 }
 
 function parseReplyDrafts(raw: string): ReplyDrafts {
-  const stripped = raw
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
-
-  const parsed = JSON.parse(stripped);
+  // Tolerates ```json fences and token-limit truncation (see src/lib/json.ts).
+  const { value: parsed } = parseLenientJson<Record<string, unknown>>(raw);
 
   return {
     official: typeof parsed.official === 'string' ? parsed.official : '확인했습니다.',

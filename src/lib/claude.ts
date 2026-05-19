@@ -25,7 +25,10 @@ export async function callClaude(
     },
     body: JSON.stringify({
       model: DEFAULT_MODEL,
-      max_tokens: 2048,
+      // 구조화 요약은 메시지가 많은 방에서 출력이 길어진다. 2048은 잘림(truncation)
+      // → "Unterminated string in JSON" 의 직접 원인이었다. 잘림 자체를 줄이고,
+      // 그래도 잘리는 경우는 parseLenientJson 이 부분 복구한다.
+      max_tokens: 4096,
       system: systemPrompt,
       messages: [
         {

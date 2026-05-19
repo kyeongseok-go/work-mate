@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 
 import { callClaude } from '@/lib/claude';
+import { parseLenientJson } from '@/lib/json';
 import { Message } from '@/data/messages';
 
 export interface SearchResult {
@@ -97,13 +98,8 @@ function clampPct(n: unknown, fallback = 0): number {
 }
 
 function parseSearch(raw: string): ParsedSearch {
-  const stripped = raw
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
-
-  const parsed = JSON.parse(stripped);
+  // Tolerates ```json fences and token-limit truncation (see src/lib/json.ts).
+  const { value: parsed } = parseLenientJson<Record<string, unknown>>(raw);
 
   const rawResults = Array.isArray(parsed.results) ? parsed.results : [];
   const results: RawSearchResult[] = rawResults.map((r: Partial<RawSearchResult>) => {

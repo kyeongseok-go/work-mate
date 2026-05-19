@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 
 import { callClaude } from '@/lib/claude';
+import { parseLenientJson } from '@/lib/json';
 import { Message } from '@/data/messages';
 
 export interface SummaryResult {
@@ -44,29 +45,35 @@ const SYSTEM_PROMPT = `당신은 기업 메신저 대화를 분석하는 AI 어�
   "limitedNote": "일상 채팅방인 경우만 포함"
 }`;
 
-function parseSummaryResult(raw: string): SummaryResult {
-  // Strip ```json ... ``` fences if present
-  const stripped = raw
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
+function parseSummaryResult(raw: string, messageCount: number): SummaryResult {
+  // Tolerates ```json fences and token-limit truncation: a long room can
+  // overflow the model's output budget mid-string, which previously bubbled
+  // up as "Unterminated string in JSON" straight to the user.
+  const { value, recovered } = parseLenientJson<Partial<SummaryResult> &
+    Record<string, unknown>>(raw);
 
-  const parsed = JSON.parse(stripped);
-
-  return {
-    decisions: Array.isArray(parsed.decisions) ? parsed.decisions : [],
-    actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems : [],
-    mentions: Array.isArray(parsed.mentions) ? parsed.mentions : [],
-    attachments: Array.isArray(parsed.attachments) ? parsed.attachments : [],
-    keyTopics: Array.isArray(parsed.keyTopics) ? parsed.keyTopics : [],
-    messageCount: typeof parsed.messageCount === 'number' ? parsed.messageCount : 0,
+  const summary: SummaryResult = {
+    decisions: Array.isArray(value.decisions) ? value.decisions : [],
+    actionItems: Array.isArray(value.actionItems) ? value.actionItems : [],
+    mentions: Array.isArray(value.mentions) ? value.mentions : [],
+    attachments: Array.isArray(value.attachments) ? value.attachments : [],
+    keyTopics: Array.isArray(value.keyTopics) ? value.keyTopics : [],
+    messageCount:
+      typeof value.messageCount === 'number' ? value.messageCount : messageCount,
     urgencyLevel:
-      parsed.urgencyLevel === 'high' || parsed.urgencyLevel === 'medium'
-        ? parsed.urgencyLevel
+      value.urgencyLevel === 'high' || value.urgencyLevel === 'medium'
+        ? value.urgencyLevel
         : 'low',
-    limitedNote: typeof parsed.limitedNote === 'string' ? parsed.limitedNote : undefined,
+    limitedNote:
+      typeof value.limitedNote === 'string' ? value.limitedNote : undefined,
   };
+
+  if (recovered && !summary.limitedNote) {
+    summary.limitedNote =
+      '대화량이 많아 AI가 일부만 요약했습니다. 전체 맥락은 채팅에서 확인해주세요.';
+  }
+
+  return summary;
 }
 
 function buildUserMessage(roomId: string, messages: Message[]): string {
@@ -97,7 +104,7 @@ export async function POST(request: Request) {
 
     const userMessage = buildUserMessage(roomId, messages);
     const rawResult = await callClaude(SYSTEM_PROMPT, userMessage);
-    const summary = parseSummaryResult(rawResult);
+    const summary = parseSummaryResult(rawResult, messages.length);
 
     return Response.json({ success: true, data: summary });
   } catch (error: unknown) {

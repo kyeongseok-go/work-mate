@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 
 import { callClaude } from '@/lib/claude';
+import { parseLenientJson } from '@/lib/json';
 import { Message } from '@/data/messages';
 import { type Severity, toSeverity } from '@/lib/severity';
 
@@ -71,13 +72,8 @@ const SYSTEM_PROMPT = `당신은 기업 채팅 메시지를 분석하여 회의�
 }`;
 
 function parseMeetingNotes(raw: string): MeetingNotes {
-  const stripped = raw
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
-
-  const parsed = JSON.parse(stripped);
+  // Tolerates ```json fences and token-limit truncation (see src/lib/json.ts).
+  const { value: parsed } = parseLenientJson<Record<string, unknown>>(raw);
 
   return {
     title: typeof parsed.title === 'string' ? parsed.title : '회의록',

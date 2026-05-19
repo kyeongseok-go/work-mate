@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 
 import { callClaude } from '@/lib/claude';
+import { parseLenientJson } from '@/lib/json';
 import { type Severity, toSeverity } from '@/lib/severity';
 
 /** 데일리 브리핑 — 채팅·알림·액션을 종합한 "오늘 알아야 할 것" 에이전트 */
@@ -80,13 +81,8 @@ ${actions || '(없음)'}`;
 }
 
 function parseDigest(raw: string): DailyDigest {
-  const stripped = raw
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
-
-  const parsed = JSON.parse(stripped);
+  // Tolerates ```json fences and token-limit truncation (see src/lib/json.ts).
+  const { value: parsed } = parseLenientJson<Record<string, unknown>>(raw);
 
   const mustKnow: DigestMustKnow[] = Array.isArray(parsed.mustKnow)
     ? parsed.mustKnow.map((m: Record<string, unknown>) => ({

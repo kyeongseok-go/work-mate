@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Sparkles, X, Layers } from 'lucide-react';
 import { useFeatureStore } from '@/store/featureStore';
 import { Message } from '@/data/messages';
 import { SummaryResult } from '@/app/api/summarize/route';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { BRAND } from '@/config/brand';
 import { cn } from '@/lib/utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -14,9 +14,17 @@ import { cn } from '@/lib/utils';
 interface SmartCatchupProps {
   roomId: string;
   messages: Message[];
+  /** 이 방의 안 읽은 메시지 수 — 요약을 "안 본 구간"으로 한정하는 데 사용 */
+  unreadCount: number;
 }
 
 type LoadState = 'idle' | 'loading' | 'success' | 'error';
+
+// Catch-up window: summarize only what the user hasn't seen. This matches the
+// feature's intent ("따라잡기") and keeps input/output within the model's
+// token budget so summaries don't get truncated.
+const MAX_SUMMARIZE = 120; // hard ceiling so very large backlogs stay bounded
+const MIN_RECENT = 30; // when nothing is unread, still give recent context
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -31,20 +39,43 @@ function urgencyLabel(level: SummaryResult['urgencyLevel']) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function SummarySkeletonCard() {
+function SummaryLoadingCard() {
   return (
-    <div className="mx-4 mt-3 mb-1 rounded-xl border border-gray-100 bg-white shadow-sm p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <Skeleton className="h-5 w-5 rounded-full" />
-        <Skeleton className="h-4 w-40" />
-        <Skeleton className="h-4 w-12 ml-auto rounded-full" />
-      </div>
-      <Skeleton className="h-3 w-full" />
-      <Skeleton className="h-3 w-3/4" />
-      <div className="pt-1 space-y-2">
-        <Skeleton className="h-8 w-full rounded-lg" />
-        <Skeleton className="h-8 w-full rounded-lg" />
-        <Skeleton className="h-8 w-5/6 rounded-lg" />
+    <div className="mx-4 mt-3 mb-1 animate-in fade-in slide-in-from-top-2 duration-300">
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm px-4 py-5 flex items-center gap-4">
+        {/* Brand logo with a soft pulsing halo — signals "thinking" */}
+        <div className="relative flex-shrink-0">
+          <span
+            className="absolute inset-0 rounded-xl animate-ping opacity-20"
+            style={{ backgroundColor: 'var(--brand-primary)' }}
+          />
+          <div
+            className="relative w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg"
+            style={{ backgroundColor: 'var(--brand-primary)' }}
+          >
+            {BRAND.appNameShort}
+          </div>
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+            <Sparkles
+              size={14}
+              className="animate-pulse"
+              style={{ color: 'var(--brand-primary)' }}
+            />
+            AI가 메시지를 요약하고 있어요
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            대화 맥락을 분석하는 중입니다… 잠시만 기다려 주세요
+          </p>
+          <div className="mt-2.5 h-1 w-full rounded-full bg-gray-100 overflow-hidden">
+            <div
+              className="h-full w-1/3 rounded-full animate-pulse"
+              style={{ backgroundColor: 'var(--brand-primary)' }}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -214,13 +245,28 @@ function ComparisonDemo({ messages, summary, onClose }: ComparisonDemoProps) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function SmartCatchup({ roomId, messages }: SmartCatchupProps) {
+export function SmartCatchup({
+  roomId,
+  messages,
+  unreadCount,
+}: SmartCatchupProps) {
   const { features } = useFeatureStore();
   const [loadState, setLoadState] = useState<LoadState>('idle');
   const [summary, setSummary] = useState<SummaryResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [showComparison, setShowComparison] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+
+  // Only summarize the unseen tail (fallback to recent context when fully
+  // read), then hard-cap so an enormous backlog still fits the token budget.
+  const catchup = useMemo(() => {
+    const base =
+      unreadCount > 0
+        ? messages.slice(-unreadCount)
+        : messages.slice(-MIN_RECENT);
+    return base.slice(-MAX_SUMMARIZE);
+  }, [messages, unreadCount]);
+  const wasCapped = unreadCount > MAX_SUMMARIZE;
 
   // Feature gate — render nothing when toggle is OFF
   if (!features.smartCatchup) return null;
@@ -239,7 +285,7 @@ export function SmartCatchup({ roomId, messages }: SmartCatchupProps) {
       const res = await fetch('/api/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId, messages }),
+        body: JSON.stringify({ roomId, messages: catchup }),
       });
 
       const json = await res.json();
@@ -262,7 +308,7 @@ export function SmartCatchup({ roomId, messages }: SmartCatchupProps) {
   return (
     <>
       {/* ── Loading skeleton ── */}
-      {loadState === 'loading' && <SummarySkeletonCard />}
+      {loadState === 'loading' && <SummaryLoadingCard />}
 
       {/* ── Idle banner ── */}
       {loadState === 'idle' && (
@@ -276,7 +322,25 @@ export function SmartCatchup({ roomId, messages }: SmartCatchupProps) {
           >
             <Sparkles size={16} style={{ color: 'var(--brand-primary)', flexShrink: 0 }} />
             <span className="flex-1 text-gray-700">
-              <span className="font-semibold">{messages.length}개</span>의 메시지가 있습니다
+              {unreadCount > 0 ? (
+                <>
+                  안 읽은 메시지{' '}
+                  <span className="font-semibold">
+                    {wasCapped ? unreadCount : catchup.length}개
+                  </span>
+                  {wasCapped && (
+                    <>
+                      {' '}중 최근{' '}
+                      <span className="font-semibold">{catchup.length}개</span>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  최근 메시지{' '}
+                  <span className="font-semibold">{catchup.length}개</span>
+                </>
+              )}
             </span>
             <button
               onClick={handleSummarize}
@@ -475,7 +539,7 @@ export function SmartCatchup({ roomId, messages }: SmartCatchupProps) {
       {/* Comparison modal */}
       {showComparison && summary && (
         <ComparisonDemo
-          messages={messages}
+          messages={catchup}
           summary={summary}
           onClose={() => setShowComparison(false)}
         />

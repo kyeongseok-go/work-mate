@@ -186,7 +186,11 @@ export default function ChatPage() {
       <ActiveMeetingBanner roomId={roomId} />
 
       {/* Smart Catchup — renders only when feature toggle is ON */}
-      <SmartCatchup roomId={roomId} messages={room.messages} />
+      <SmartCatchup
+        roomId={roomId}
+        messages={room.messages}
+        unreadCount={room.unreadCount}
+      />
 
       {/* Pinned meeting notes — renders only when a note is pinned */}
       <PinnedNoteBanner roomId={roomId} />
