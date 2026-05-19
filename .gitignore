@@ -44,3 +44,9 @@ next-env.d.ts
 /docs/
 /CLAUDE.md
 /.gotechy-dev/
+
+# recruiter-facing 포트폴리오(JD 타겟팅 포함) — 공개 product repo 미푸시
+/workmate-portfolio.html
+
+# 자소서용 사실추출(JD 타겟팅 포함) — 공개 repo 미푸시
+/workmate-facts.md
